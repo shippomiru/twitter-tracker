@@ -69,26 +69,46 @@ export function SettingsForm() {
     },
   });
 
-  useEffect(() => {
-    const loadSettings = async () => {
+  const loadSettings = async () => {
+    try {
       setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSettings(mockSettings);
-      setAccounts(mockSettings.monitoredAccounts);
+      // 从localStorage获取设置
+      const savedSettings = localStorage.getItem('userSettings');
+      if (savedSettings) {
+        const parsedSettings = JSON.parse(savedSettings);
+        form.reset(parsedSettings);
+        setAccounts(parsedSettings.monitoredAccounts || []);
+        return;
+      }
       
-      form.reset({
-        emailAddress: mockSettings.emailAddress,
-        phoneNumber: mockSettings.phoneNumber,
-        checkFrequency: mockSettings.checkFrequency.toString(),
+      // 如果没有本地存储的设置，使用默认值
+      const defaultSettings = {
+        emailAddress: '',
+        phoneNumber: '',
+        checkFrequency: '15',
         notificationChannels: {
-          email: mockSettings.notificationChannels.email,
-          phone: mockSettings.notificationChannels.phone,
+          email: false,
+          phone: false,
         },
-      });
+        monitoredAccounts: [],
+      };
       
+      form.reset(defaultSettings);
+      setAccounts([]);
+      localStorage.setItem('userSettings', JSON.stringify(defaultSettings));
+    } catch (error) {
+      console.error('Error loading settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load settings",
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
+  useEffect(() => {
     loadSettings();
   }, [form]);
 
@@ -117,24 +137,33 @@ export function SettingsForm() {
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setSavingSettings(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const updatedSettings: UserSettings = {
-      monitoredAccounts: accounts,
-      checkFrequency: parseInt(values.checkFrequency),
-      notificationChannels: values.notificationChannels,
-      emailAddress: values.emailAddress,
-      phoneNumber: values.phoneNumber,
-    };
-    
-    setSettings(updatedSettings);
-    setSavingSettings(false);
-    
-    toast({
-      title: "Settings saved",
-      description: "Your monitoring settings have been updated",
-    });
+    try {
+      setLoading(true);
+      
+      // 准备要保存的数据
+      const settingsToSave = {
+        ...values,
+        monitoredAccounts: accounts,
+      };
+      
+      // 保存到localStorage
+      localStorage.setItem('userSettings', JSON.stringify(settingsToSave));
+      
+      // 显示成功提示
+      toast({
+        title: 'Success',
+        description: 'Settings saved successfully',
+      });
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save settings',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
