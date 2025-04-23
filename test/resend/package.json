@@ -1,0 +1,12 @@
+{
+  "name": "resend-test",
+  "version": "1.0.0",
+  "description": "测试Resend邮件API",
+  "scripts": {
+    "test-http": "node test-resend.js",
+    "test-sdk": "node test-resend-sdk.js"
+  },
+  "dependencies": {
+    "resend": "^1.0.0"
+  }
+} 

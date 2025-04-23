@@ -1,0 +1,12 @@
+{
+  "name": "feishu-test",
+  "version": "1.0.0",
+  "description": "测试飞书API",
+  "scripts": {
+    "test": "node test-feishu.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "dotenv": "^16.4.5"
+  }
+} 
