@@ -40,12 +40,30 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 const formSchema = z.object({
   emailAddress: z.string().email("Invalid email address").optional().or(z.literal("")),
-  phoneNumber: z.string().optional().or(z.literal("")),
+  phoneNumber: z.string().regex(/^1[3-9]\d{9}$/, "Invalid phone number").optional().or(z.literal("")),
   checkFrequency: z.string(),
   notificationChannels: z.object({
     email: z.boolean(),
     phone: z.boolean(),
   }),
+}).refine((data) => {
+  // 如果开启了邮件通知，则邮箱必填
+  if (data.notificationChannels.email && !data.emailAddress) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Email is required when email notification is enabled",
+  path: ["emailAddress"],
+}).refine((data) => {
+  // 如果开启了电话通知，则手机号必填
+  if (data.notificationChannels.phone && !data.phoneNumber) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Phone number is required when phone notification is enabled",
+  path: ["phoneNumber"],
 });
 
 export function SettingsForm() {
@@ -325,11 +343,11 @@ export function SettingsForm() {
                         name="emailAddress"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Email Address</FormLabel>
+                            <FormLabel className="text-foreground">Email Address</FormLabel>
                             <FormControl>
                               <Input placeholder="your@email.com" {...field} />
                             </FormControl>
-                            <FormMessage />
+                            <FormMessage className="text-destructive" />
                           </FormItem>
                         )}
                       />
@@ -362,11 +380,11 @@ export function SettingsForm() {
                         name="phoneNumber"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Phone Number Linked to Feishu</FormLabel>
+                            <FormLabel className="text-foreground">Phone Number Linked to Feishu</FormLabel>
                             <FormControl>
                               <Input placeholder="+1234567890" {...field} />
                             </FormControl>
-                            <FormMessage />
+                            <FormMessage className="text-destructive" />
                           </FormItem>
                         )}
                       />
