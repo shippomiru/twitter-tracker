@@ -362,13 +362,10 @@ export function SettingsForm() {
                         name="phoneNumber"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Phone Number</FormLabel>
+                            <FormLabel>Phone Number Linked to Feishu</FormLabel>
                             <FormControl>
                               <Input placeholder="+1234567890" {...field} />
                             </FormControl>
-                            <FormDescription>
-                              Include country code (e.g., +1 for US)
-                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
