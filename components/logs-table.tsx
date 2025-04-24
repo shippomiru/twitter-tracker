@@ -38,7 +38,19 @@ export function LogsTable() {
       setLoading(true);
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-      setLogs(mockNotificationLogs);
+      
+      // 检查localStorage中是否有日志
+      if (typeof window !== 'undefined') {
+        const savedLogs = localStorage.getItem('notificationLogs');
+        if (savedLogs) {
+          setLogs(JSON.parse(savedLogs));
+        } else {
+          setLogs([]);
+        }
+      } else {
+        setLogs([]);
+      }
+      
       setLoading(false);
     };
 

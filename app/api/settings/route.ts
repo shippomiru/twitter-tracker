@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { UserSettings } from '@/lib/types';
 
+// 配置动态路由
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // 使用内存存储作为临时解决方案
 let settings: UserSettings | null = null;
 

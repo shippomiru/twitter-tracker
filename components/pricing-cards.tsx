@@ -48,7 +48,7 @@ export function PricingCards() {
       },
       features: [
         "Monitor 10 Twitter accounts",
-        "5-minute check frequency",
+        "15-minute check frequency",
         "Email notifications",
         "Phone call notifications",
         "Twitter-to-Chinese translation",
@@ -194,7 +194,7 @@ export function PricingCards() {
 const faqs = [
   {
     question: "How quickly will I be notified of new tweets?",
-    answer: "Free plan checks every 15 minutes, Pro every 5 minutes, and Business plan offers near real-time monitoring with immediate notifications."
+    answer: "Free plan checks every 15 minutes, Pro plan also checks every 15 minutes, and Business plan offers near real-time monitoring with immediate notifications."
   },
   {
     question: "Can I monitor private Twitter accounts?",

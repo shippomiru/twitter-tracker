@@ -164,6 +164,12 @@ async function sendNotifications(tweet: Tweet, settings: UserSettings, customSub
       };
       
       notificationLogs.push(log);
+      
+      // 保存到localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('notificationLogs', JSON.stringify(notificationLogs));
+      }
+      
       logInfo(`邮件通知发送${emailSent ? '成功' : '失败'}`);
     } catch (error) {
       logError('发送邮件通知失败:', error);
@@ -179,6 +185,11 @@ async function sendNotifications(tweet: Tweet, settings: UserSettings, customSub
       };
       
       notificationLogs.push(log);
+      
+      // 保存到localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('notificationLogs', JSON.stringify(notificationLogs));
+      }
     }
   }
   
@@ -204,6 +215,12 @@ async function sendNotifications(tweet: Tweet, settings: UserSettings, customSub
       };
       
       notificationLogs.push(log);
+      
+      // 保存到localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('notificationLogs', JSON.stringify(notificationLogs));
+      }
+      
       logInfo(`电话通知发送${phoneSent ? '成功' : '失败'}`);
     } catch (error) {
       logError('发送电话通知失败:', error);
@@ -219,6 +236,11 @@ async function sendNotifications(tweet: Tweet, settings: UserSettings, customSub
       };
       
       notificationLogs.push(log);
+      
+      // 保存到localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('notificationLogs', JSON.stringify(notificationLogs));
+      }
     }
   }
 }

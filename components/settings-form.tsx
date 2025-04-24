@@ -90,30 +90,28 @@ export function SettingsForm() {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      // 从localStorage获取设置
-      const savedSettings = localStorage.getItem('userSettings');
-      if (savedSettings) {
-        const parsedSettings = JSON.parse(savedSettings);
-        form.reset(parsedSettings);
-        setAccounts(parsedSettings.monitoredAccounts || []);
-        return;
+      // 只在客户端运行时使用localStorage
+      if (typeof window !== 'undefined') {
+        const savedSettings = localStorage.getItem('userSettings');
+        if (savedSettings) {
+          const parsedSettings = JSON.parse(savedSettings);
+          form.reset(parsedSettings);
+          setAccounts(parsedSettings.monitoredAccounts || []);
+          return;
+        }
       }
       
-      // 如果没有本地存储的设置，使用默认值
-      const defaultSettings = {
-        emailAddress: '',
-        phoneNumber: '',
-        checkFrequency: '15',
+      // 如果没有本地设置，使用默认值
+      form.reset({
+        emailAddress: "",
+        phoneNumber: "",
+        checkFrequency: "15",
         notificationChannels: {
           email: false,
           phone: false,
         },
-        monitoredAccounts: [],
-      };
-      
-      form.reset(defaultSettings);
+      });
       setAccounts([]);
-      localStorage.setItem('userSettings', JSON.stringify(defaultSettings));
     } catch (error) {
       console.error('Error loading settings:', error);
       toast({
@@ -156,7 +154,7 @@ export function SettingsForm() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      setLoading(true);
+      setSavingSettings(true);
       
       // 准备要保存的数据
       const settingsToSave = {
@@ -166,6 +164,9 @@ export function SettingsForm() {
       
       // 保存到localStorage
       localStorage.setItem('userSettings', JSON.stringify(settingsToSave));
+      
+      // 清空日志
+      localStorage.removeItem('notificationLogs');
       
       // 显示成功提示
       toast({
@@ -180,7 +181,7 @@ export function SettingsForm() {
         variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setSavingSettings(false);
     }
   };
 
@@ -294,7 +295,6 @@ export function SettingsForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="5">Every 5 minutes</SelectItem>
                           <SelectItem value="15">Every 15 minutes</SelectItem>
                           <SelectItem value="30">Every 30 minutes</SelectItem>
                           <SelectItem value="60">Every hour</SelectItem>
