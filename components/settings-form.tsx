@@ -178,11 +178,37 @@ export function SettingsForm() {
       // 清空日志
       localStorage.removeItem('notificationLogs');
       
-      // 显示成功提示
-      toast({
-        title: 'Success',
-        description: 'Settings saved successfully',
-      });
+      // 自动触发监控API，开始检查新推文
+      try {
+        const response = await fetch('/api/monitor');
+        const result = await response.json();
+        
+        if (result.success) {
+          toast({
+            title: 'Success',
+            description: 'Settings saved and monitoring started',
+          });
+          
+          if (result.newTweets && result.newTweets.length > 0) {
+            toast({
+              title: 'New Tweets Found',
+              description: `Found ${result.newTweets.length} new tweets during initial check`,
+            });
+          }
+        } else {
+          console.error('Error starting monitoring:', result.message);
+          toast({
+            title: 'Success',
+            description: 'Settings saved successfully. Monitoring will start on next schedule.',
+          });
+        }
+      } catch (apiError) {
+        console.error('Error calling monitoring API:', apiError);
+        toast({
+          title: 'Success',
+          description: 'Settings saved successfully. Monitoring will start on next schedule.',
+        });
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
       toast({
