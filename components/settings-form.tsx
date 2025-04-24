@@ -178,9 +178,14 @@ export function SettingsForm() {
       // 清空日志
       localStorage.removeItem('notificationLogs');
       
+      // 将设置序列化并编码为URL参数
+      const settingsParam = encodeURIComponent(JSON.stringify(settingsToSave));
+      
       // 自动触发监控API，开始检查新推文
       try {
-        const response = await fetch('/api/monitor');
+        console.log('开始调用监控API');
+        // 将设置作为URL参数传递，避免依赖服务器端读取localStorage
+        const response = await fetch(`/api/monitor?settings=${settingsParam}`);
         const result = await response.json();
         
         if (result.success) {
@@ -198,15 +203,17 @@ export function SettingsForm() {
         } else {
           console.error('Error starting monitoring:', result.message);
           toast({
-            title: 'Success',
-            description: 'Settings saved successfully. Monitoring will start on next schedule.',
+            title: 'Warning',
+            description: `Settings saved but monitoring failed: ${result.message || 'Unknown error'}`,
+            variant: 'destructive',
           });
         }
       } catch (apiError) {
         console.error('Error calling monitoring API:', apiError);
         toast({
-          title: 'Success',
-          description: 'Settings saved successfully. Monitoring will start on next schedule.',
+          title: 'Warning',
+          description: 'Settings saved but monitoring API call failed. Please try again later.',
+          variant: 'destructive',
         });
       }
     } catch (error) {

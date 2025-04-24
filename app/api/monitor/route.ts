@@ -7,42 +7,32 @@ const monitorService = require('@/lib/services/monitorService');
 const twitterService = require('@/lib/services/twitterService');
 const { log } = require('@/lib/services/utils');
 
-// 日志记录
+// 日志记录 - 确保在服务器端始终执行
 function logInfo(message: string) {
-  console.log(`[${new Date().toISOString()}] [INFO] ${message}`);
-  
-  // 在Vercel环境中额外添加日志
-  if (typeof process !== 'undefined' && process.env.VERCEL) {
-    console.log(`TWITTER_MONITOR_API: ${message}`);
-  }
+  // 使用console.log确保在Vercel Functions中显示
+  console.log(`[VERCEL_LOG][${new Date().toISOString()}] [INFO] ${message}`);
 }
 
 function logError(message: string, error?: any) {
-  console.error(`[${new Date().toISOString()}] [ERROR] ${message}`);
+  // 使用console.error确保错误在Vercel中被捕获
+  console.error(`[VERCEL_LOG][${new Date().toISOString()}] [ERROR] ${message}`);
   if (error) {
-    console.error(error);
-  }
-  
-  // 在Vercel环境中额外添加日志
-  if (typeof process !== 'undefined' && process.env.VERCEL) {
-    console.error(`TWITTER_MONITOR_API_ERROR: ${message}`);
-    if (error) {
-      console.error(`TWITTER_MONITOR_API_ERROR_DETAILS: ${JSON.stringify(error)}`);
-    }
+    console.error(`[VERCEL_LOG][ERROR_DETAILS] ${JSON.stringify(error, Object.getOwnPropertyNames(error))}`);
   }
 }
 
-// 保存设置到持久化存储（目前使用内存变量模拟）
-// This would be a real database in a production app
+// 这里设置默认的配置，Vercel服务器端无法访问localStorage
 let settings = mockSettings;
 let notificationLogs: NotificationLog[] = [];
 
-// In a real app, this would be a scheduled function
-// For this MVP, we'll make it an API endpoint that could be called by a cron job
-export async function GET() {
+// API端点 - 在Vercel上作为serverless函数执行
+export async function GET(request: Request) {
+  // 立即记录API调用，确保在Vercel日志中看到
+  console.log(`[VERCEL_FUNCTION_START] Twitter Monitor API called at ${new Date().toISOString()}`);
+  
   // 检查是否是构建环境
   if (process.env.NEXT_PHASE === 'phase-production-build') {
-    logInfo('检测到构建环境，跳过监控执行');
+    console.log('[VERCEL_BUILD] 检测到构建环境，跳过监控执行');
     return NextResponse.json({ 
       success: true, 
       message: 'Build phase - skipping monitoring',
@@ -51,38 +41,33 @@ export async function GET() {
   }
 
   try {
-    // 记录API调用开始
-    logInfo('=== 监控API调用开始 ===');
-    logInfo(`环境检测: NODE_ENV=${process.env.NODE_ENV}, VERCEL=${process.env.VERCEL ? 'true' : 'false'}`);
+    // 从URL参数获取设置，而不是从localStorage
+    const url = new URL(request.url);
+    const settingsParam = url.searchParams.get('settings');
     
-    // 尝试从localStorage获取用户设置（如果在客户端）
-    if (typeof window !== 'undefined') {
+    if (settingsParam) {
       try {
-        const savedSettings = localStorage.getItem('userSettings');
-        if (savedSettings) {
-          settings = JSON.parse(savedSettings);
-          logInfo('从localStorage加载了用户设置');
-        }
-      } catch (error) {
-        logError('从localStorage读取设置失败', error);
+        console.log('[VERCEL_PARAMS] 从URL参数接收到settings');
+        settings = JSON.parse(decodeURIComponent(settingsParam));
+      } catch (parseError) {
+        console.error('[VERCEL_PARAMS_ERROR] 解析settings参数失败:', parseError);
       }
+    } else {
+      console.log('[VERCEL_PARAMS] 未收到settings参数，使用默认设置');
     }
     
-    // 1. 获取所有监控账号
-    const accounts = settings.monitoredAccounts;
-    const newTweets: Tweet[] = [];
+    // 记录环境和设置信息
+    console.log(`[VERCEL_ENV] NODE_ENV=${process.env.NODE_ENV || '未设置'}, VERCEL=${process.env.VERCEL || '未设置'}`);
+    console.log(`[VERCEL_CONFIG] 检查频率=${settings.checkFrequency || '默认'}, 监控账号数=${settings.monitoredAccounts?.length || 0}`);
+    console.log(`[VERCEL_CONFIG] 邮件通知=${settings.notificationChannels?.email || false}, 电话通知=${settings.notificationChannels?.phone || false}`);
     
-    // 记录设置信息
-    logInfo(`当前设置: ${JSON.stringify({
-      emailEnabled: settings.notificationChannels?.email,
-      phoneEnabled: settings.notificationChannels?.phone,
-      checkFrequency: settings.checkFrequency,
-      accountsCount: accounts.length
-    })}`);
+    // 1. 获取所有监控账号
+    const accounts = settings.monitoredAccounts || [];
+    const newTweets: Tweet[] = [];
     
     // 如果没有监控账号，直接返回
     if (accounts.length === 0) {
-      logInfo('没有监控账号，跳过检查');
+      console.log('[VERCEL_MONITOR] 没有监控账号，跳过检查');
       return NextResponse.json({ 
         success: true, 
         message: 'No accounts to monitor',
@@ -92,65 +77,63 @@ export async function GET() {
     
     // 1.1 更新监控服务的设置
     monitorService.updateSettings(settings);
+    console.log(`[VERCEL_MONITOR] 已更新监控服务设置`);
     
-    logInfo(`开始检查 ${accounts.length} 个监控账号的新推文`);
+    console.log(`[VERCEL_MONITOR] 开始检查 ${accounts.length} 个监控账号的新推文`);
     
     // 2. 处理每个账号
     for (const account of accounts) {
-      logInfo(`==== 开始处理账号 @${account.username} ====`);
+      console.log(`[VERCEL_ACCOUNT] 开始处理账号 @${account.username}`);
       
       try {
         // 2.1 添加监控用户（如果还没有添加）
-        logInfo(`尝试添加监控用户: ${account.username}`);
+        console.log(`[VERCEL_ADD_USER] 尝试添加监控用户: ${account.username}`);
         const addResult = await monitorService.addUser(account.username);
-        logInfo(`添加用户结果: ${addResult ? '成功' : '已存在'}`);
+        console.log(`[VERCEL_ADD_USER] 添加用户结果: ${addResult ? '成功' : '已存在'}`);
         
         // 2.2 检查用户最新推文
-        logInfo(`开始检查用户 ${account.username} 的新推文`);
+        console.log(`[VERCEL_CHECK_TWEETS] 开始检查用户 ${account.username} 的新推文`);
         await monitorService.checkUser(account.username);
         
         // 2.3 更新最后检查时间
         account.lastChecked = new Date().toISOString();
-        logInfo(`更新最后检查时间: ${account.lastChecked}`);
+        console.log(`[VERCEL_UPDATE] 更新最后检查时间: ${account.lastChecked}`);
         
         // 获取用户最新推文ID以更新lastTweetId
         const latestTweets = monitorService.storage.getLatestTweets(account.username);
         if (latestTweets && latestTweets.length > 0) {
           account.lastTweetId = latestTweets[0].id;
-          logInfo(`更新最后推文ID: ${account.lastTweetId}`);
+          console.log(`[VERCEL_UPDATE] 更新最后推文ID: ${account.lastTweetId}`);
           
           // 添加到返回结果
           newTweets.push(...latestTweets.map((tweet: any) => ({
             ...tweet,
             translation: '已通过monitorService处理'
           })));
+          
+          console.log(`[VERCEL_TWEETS] 用户 ${account.username} 发现 ${latestTweets.length} 条推文`);
+        } else {
+          console.log(`[VERCEL_TWEETS] 用户 ${account.username} 未发现新推文`);
         }
       } catch (error) {
-        logError(`处理账号 @${account.username} 的推文时出错:`, error);
+        console.error(`[VERCEL_ERROR] 处理账号 @${account.username} 出错:`, error);
+        if (error instanceof Error) {
+          console.error(`[VERCEL_ERROR_DETAILS] 类型:${error.name}, 消息:${error.message}, 堆栈:${error.stack}`);
+        }
       }
     }
     
-    // 3. 保存更新后的设置
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('userSettings', JSON.stringify(settings));
-        logInfo('已将更新后的设置保存到localStorage');
-      } catch (saveError) {
-        logError('保存设置到localStorage失败', saveError);
-      }
-    }
-    
-    logInfo(`=== 监控API调用完成 ===`);
+    console.log(`[VERCEL_FUNCTION_END] 监控API调用完成，发现 ${newTweets.length} 条新推文`);
     return NextResponse.json({ 
       success: true, 
       message: `已检查 ${accounts.length} 个账号, 发现 ${newTweets.length} 条新推文`,
       newTweets 
     });
   } catch (error) {
-    logError('监控路由执行错误:', error);
+    console.error(`[VERCEL_CRITICAL_ERROR] 监控路由执行错误:`, error);
     // 记录详细的错误信息
     if (error instanceof Error) {
-      logError(`错误类型: ${error.name}, 错误消息: ${error.message}, 堆栈: ${error.stack}`);
+      console.error(`[VERCEL_CRITICAL_ERROR_DETAILS] 类型:${error.name}, 消息:${error.message}, 堆栈:${error.stack || '无堆栈'}`);
     }
     
     return NextResponse.json(
