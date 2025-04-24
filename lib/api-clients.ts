@@ -1,6 +1,10 @@
 // This file would contain actual API client implementations
 // For now, we're just defining the interfaces
 
+// Import actual service implementations
+import { emailClient as realEmailClient } from './services/emailService';
+import { phoneClient as realPhoneClient } from './services/feishuService';
+
 // Twitter API client
 export interface TwitterClient {
   getLatestTweets(username: string, sinceId?: string): Promise<any[]>;
@@ -44,18 +48,24 @@ export const translationClient: TranslationClient = {
   }
 };
 
-export const emailClient: EmailClient = {
-  sendNotification: async (to, subject, content) => {
-    // Implementation would use Resend API
-    console.log(`Sending email to ${to}`);
-    return true;
+// Use actual implementation or fallback to mock implementation
+export const emailClient: EmailClient = (typeof realEmailClient !== 'undefined' ? 
+  realEmailClient : {
+    sendNotification: async (to, subject, content) => {
+      // Implementation would use Resend API
+      console.log(`Sending email to ${to}`);
+      return true;
+    }
   }
-};
+);
 
-export const phoneClient: PhoneClient = {
-  sendCallNotification: async (phoneNumber, message) => {
-    // Implementation would use Feishu API
-    console.log(`Sending phone notification to ${phoneNumber}`);
-    return true;
+// Use actual implementation or fallback to mock implementation
+export const phoneClient: PhoneClient = (typeof realPhoneClient !== 'undefined' ? 
+  realPhoneClient : {
+    sendCallNotification: async (phoneNumber, message) => {
+      // Implementation would use Feishu API
+      console.log(`Sending phone notification to ${phoneNumber}`);
+      return true;
+    }
   }
-};
+);

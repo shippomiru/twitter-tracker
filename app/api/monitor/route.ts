@@ -250,7 +250,7 @@ async function sendNotifications(tweet: Tweet, settings: UserSettings, customSub
         accountName: tweet.author.username,
         notificationType: 'phone',
         status: 'failed',
-        errorMessage: '连接电话服务失败'
+        errorMessage: '发送电话通知失败'
       };
       
       notificationLogs.push(log);
@@ -264,5 +264,5 @@ async function sendNotifications(tweet: Tweet, settings: UserSettings, customSub
 }
 
 function generateId() {
-  return Math.random().toString(36).substring(2, 15);
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
