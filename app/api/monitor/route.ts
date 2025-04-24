@@ -1,29 +1,9 @@
 import { NextResponse } from 'next/server';
-import { twitterClient, emailClient, phoneClient, translationClient } from '@/lib/api-clients';
 import { UserSettings, Tweet, NotificationLog } from '@/lib/types';
 import { mockSettings, mockTweets } from '@/lib/mock-data';
 // 引入监控服务
 const monitorService = require('@/lib/services/monitorService');
-const twitterService = require('@/lib/services/twitterService');
-const { log } = require('@/lib/services/utils');
-
-// 日志记录 - 确保在服务器端始终执行
-function logInfo(message: string) {
-  // 使用console.log确保在Vercel Functions中显示
-  console.log(`[VERCEL_LOG][${new Date().toISOString()}] [INFO] ${message}`);
-}
-
-function logError(message: string, error?: any) {
-  // 使用console.error确保错误在Vercel中被捕获
-  console.error(`[VERCEL_LOG][${new Date().toISOString()}] [ERROR] ${message}`);
-  if (error) {
-    console.error(`[VERCEL_LOG][ERROR_DETAILS] ${JSON.stringify(error, Object.getOwnPropertyNames(error))}`);
-  }
-}
-
-// 这里设置默认的配置，Vercel服务器端无法访问localStorage
-let settings = mockSettings;
-let notificationLogs: NotificationLog[] = [];
+const { log, storage } = require('@/lib/services/utils');
 
 // 添加API超时保护
 const withTimeout = <T>(promise: Promise<T>, timeout = 50000): Promise<T> => {
@@ -72,32 +52,16 @@ export async function GET(request: Request) {
     console.error(`[VERCEL_TEST_CRITICAL] 测试日志出错:`, testError);
   }
   
-  // 检查是否是构建环境
+  // 检查环境变量
   console.log(`[VERCEL_PHASE_CHECK] NEXT_PHASE=${process.env.NEXT_PHASE || '未设置'}`);
   console.log(`[VERCEL_PHASE_CHECK] VERCEL_ENV=${process.env.VERCEL_ENV || '未设置'}`);
   console.log(`[VERCEL_PHASE_CHECK] NODE_ENV=${process.env.NODE_ENV || '未设置'}`);
-  
-  // 强制跳过构建环境检查，确保API能正常执行
-  const skipBuildCheck = true;
-  
-  if (!skipBuildCheck && process.env.NEXT_PHASE === 'phase-production-build') {
-    console.log('[VERCEL_BUILD] 检测到构建环境，跳过监控执行');
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Build phase - skipping monitoring',
-      newTweets: [],
-      env: {
-        NEXT_PHASE: process.env.NEXT_PHASE,
-        NODE_ENV: process.env.NODE_ENV,
-        VERCEL_ENV: process.env.VERCEL_ENV
-      }
-    });
-  }
 
   try {
     // 从URL参数获取设置，而不是从localStorage
     const url = new URL(request.url);
     const settingsParam = url.searchParams.get('settings');
+    let settings = mockSettings;
     
     if (settingsParam) {
       try {
@@ -105,6 +69,10 @@ export async function GET(request: Request) {
         settings = JSON.parse(decodeURIComponent(settingsParam));
       } catch (parseError) {
         console.error('[VERCEL_PARAMS_ERROR] 解析settings参数失败:', parseError);
+        return NextResponse.json({
+          success: false,
+          message: '解析settings参数失败'
+        }, { status: 400 });
       }
     } else {
       console.log('[VERCEL_PARAMS] 未收到settings参数，使用默认设置');
@@ -115,87 +83,62 @@ export async function GET(request: Request) {
     console.log(`[VERCEL_CONFIG] 检查频率=${settings.checkFrequency || '默认'}, 监控账号数=${settings.monitoredAccounts?.length || 0}`);
     console.log(`[VERCEL_CONFIG] 邮件通知=${settings.notificationChannels?.email || false}, 电话通知=${settings.notificationChannels?.phone || false}`);
     
-    // 1. 获取所有监控账号
+    // 获取监控账号
     const accounts = settings.monitoredAccounts || [];
-    const newTweets: Tweet[] = [];
     
     // 如果没有监控账号，直接返回
     if (accounts.length === 0) {
-      console.log('[VERCEL_MONITOR] 没有监控账号，跳过检查');
+      console.log('[VERCEL_MONITOR] 没有监控账号，跳过初始化');
       return NextResponse.json({ 
         success: true, 
         message: 'No accounts to monitor',
-        newTweets: [] 
+        monitorStatus: {
+          initialized: false,
+          accounts: []
+        }
       });
     }
     
-    // 1.1 更新监控服务的设置
+    // 更新监控服务的设置
     monitorService.updateSettings(settings);
     console.log(`[VERCEL_MONITOR] 已更新监控服务设置`);
     
-    console.log(`[VERCEL_MONITOR] 开始检查 ${accounts.length} 个监控账号的新推文`);
-    
-    // 2. 处理每个账号，但设置总体超时
-    try {
-      // 使用Promise.all和超时保护包装所有账号处理
-      await withTimeout(Promise.all(accounts.map(async (account) => {
-        console.log(`[VERCEL_ACCOUNT] 开始处理账号 @${account.username}`);
+    // 初始化监控任务，但不执行实际检查（因为Twitter API限制）
+    const monitorStatus = {
+      initialized: true,
+      accounts: accounts.map(account => {
+        // 为每个账号创建初始状态
+        storage.initializeUser(account.username);
         
-        try {
-          // 2.1 添加监控用户（如果还没有添加）
-          console.log(`[VERCEL_ADD_USER] 尝试添加监控用户: ${account.username}`);
-          const addResult = await monitorService.addUser(account.username);
-          console.log(`[VERCEL_ADD_USER] 添加用户结果: ${addResult ? '成功' : '已存在'}`);
-          
-          // 2.2 检查用户最新推文
-          console.log(`[VERCEL_CHECK_TWEETS] 开始检查用户 ${account.username} 的新推文`);
-          await monitorService.checkUser(account.username);
-          
-          // 2.3 更新最后检查时间
-          account.lastChecked = new Date().toISOString();
-          console.log(`[VERCEL_UPDATE] 更新最后检查时间: ${account.lastChecked}`);
-          
-          // 获取用户最新推文ID以更新lastTweetId
-          const latestTweets = monitorService.storage.getLatestTweets(account.username);
-          if (latestTweets && latestTweets.length > 0) {
-            account.lastTweetId = latestTweets[0].id;
-            console.log(`[VERCEL_UPDATE] 更新最后推文ID: ${account.lastTweetId}`);
-            
-            // 添加到返回结果
-            newTweets.push(...latestTweets.map((tweet: any) => ({
-              ...tweet,
-              translation: '已通过monitorService处理'
-            })));
-            
-            console.log(`[VERCEL_TWEETS] 用户 ${account.username} 发现 ${latestTweets.length} 条推文`);
-          } else {
-            console.log(`[VERCEL_TWEETS] 用户 ${account.username} 未发现新推文`);
-          }
-        } catch (error) {
-          console.error(`[VERCEL_ERROR] 处理账号 @${account.username} 出错:`, error);
-          if (error instanceof Error) {
-            console.error(`[VERCEL_ERROR_DETAILS] 类型:${error.name}, 消息:${error.message}, 堆栈:${error.stack}`);
-          }
-          // 单个账号处理错误不应该影响整体流程
-          return null;
-        }
-      })), 45000); // 设置45秒超时，预留时间给响应处理
-    } catch (timeoutError) {
-      console.error(`[VERCEL_TIMEOUT] 处理账号超时:`, timeoutError);
-      // 即使超时也返回已处理的结果
-      return NextResponse.json({ 
-        success: true, 
-        message: `处理部分完成但遇到超时，发现 ${newTweets.length} 条新推文`,
-        newTweets,
-        warning: "操作超时，部分处理可能未完成"
-      });
-    }
+        // 设置初始基线时间
+        const baselineTime = new Date().toISOString();
+        storage.setUserBaseline(account.username, baselineTime);
+        
+        return {
+          username: account.username,
+          status: 'initialized',
+          baselineTime,
+          nextCheck: new Date(new Date().getTime() + 15 * 60 * 1000).toISOString()
+        };
+      }),
+      systemStatus: {
+        lastInitialized: new Date().toISOString(),
+        nextScheduledRun: new Date(new Date().getTime() + 15 * 60 * 1000).toISOString()
+      }
+    };
     
-    console.log(`[VERCEL_FUNCTION_END] 监控API调用完成，发现 ${newTweets.length} 条新推文`);
+    // 更新系统状态
+    storage.systemState = {
+      ...storage.systemState,
+      lastInitialized: new Date().toISOString(),
+      monitoringActive: true
+    };
+    
+    console.log(`[VERCEL_FUNCTION_END] 监控初始化完成，设置了 ${accounts.length} 个账号的监控`);
     return NextResponse.json({ 
       success: true, 
-      message: `已检查 ${accounts.length} 个账号, 发现 ${newTweets.length} 条新推文`,
-      newTweets 
+      message: `已设置 ${accounts.length} 个账号的监控，将在下一个周期检查新推文`,
+      monitorStatus 
     });
   } catch (error) {
     console.error(`[VERCEL_CRITICAL_ERROR] 监控路由执行错误:`, error);
@@ -205,7 +148,7 @@ export async function GET(request: Request) {
     }
     
     return NextResponse.json(
-      { success: false, message: '检查新推文失败', error: error instanceof Error ? error.message : String(error) },
+      { success: false, message: '设置监控失败', error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
