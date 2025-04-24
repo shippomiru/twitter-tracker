@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { UserSettings, Tweet, NotificationLog } from '@/lib/types';
 import { mockSettings, mockTweets } from '@/lib/mock-data';
-// 引入监控服务
+// 引入监控服务和KV存储
 const monitorService = require('@/lib/services/monitorService');
-const { log, storage } = require('@/lib/services/utils');
+const kvStorage = require('@/lib/services/kvStorage');
+const { log } = require('@/lib/services/utils');
 
 // 添加API超时保护
 const withTimeout = <T>(promise: Promise<T>, timeout = 50000): Promise<T> => {
@@ -61,6 +62,7 @@ export async function GET(request: Request) {
     // 从URL参数获取设置，而不是从localStorage
     const url = new URL(request.url);
     const settingsParam = url.searchParams.get('settings');
+    const shouldReplace = url.searchParams.get('replace') === 'true';
     let settings = mockSettings;
     
     if (settingsParam) {
@@ -82,6 +84,7 @@ export async function GET(request: Request) {
     console.log(`[VERCEL_ENV] NODE_ENV=${process.env.NODE_ENV || '未设置'}, VERCEL=${process.env.VERCEL || '未设置'}`);
     console.log(`[VERCEL_CONFIG] 检查频率=${settings.checkFrequency || '默认'}, 监控账号数=${settings.monitoredAccounts?.length || 0}`);
     console.log(`[VERCEL_CONFIG] 邮件通知=${settings.notificationChannels?.email || false}, 电话通知=${settings.notificationChannels?.phone || false}`);
+    console.log(`[VERCEL_CONFIG] 是否替换现有监控=${shouldReplace}`);
     
     // 获取监控账号
     const accounts = settings.monitoredAccounts || [];
@@ -98,6 +101,23 @@ export async function GET(request: Request) {
         }
       });
     }
+
+    // 如果请求要求替换现有监控，则清除所有现有监控
+    if (shouldReplace) {
+      console.log('[VERCEL_MONITOR] 清除所有现有监控账号');
+      
+      // 获取现有账号列表用于日志显示
+      const existingUsers = await kvStorage.getAllUsers();
+      const existingAccounts = Object.keys(existingUsers);
+      const existingCount = existingAccounts.length;
+      
+      // 清空用户存储
+      await monitorService.clearAllMonitoringAccounts();
+      
+      if (existingCount > 0) {
+        console.log(`[VERCEL_MONITOR] 已清除 ${existingCount} 个现有监控账号: ${existingAccounts.join(', ')}`);
+      }
+    }
     
     // 更新监控服务的设置
     monitorService.updateSettings(settings);
@@ -105,14 +125,15 @@ export async function GET(request: Request) {
     
     // 初始化监控任务，但不执行实际检查（因为Twitter API限制）
     const monitorStatus = {
+      replaced: shouldReplace,
       initialized: true,
-      accounts: accounts.map(account => {
+      accounts: await Promise.all(accounts.map(async account => {
         // 为每个账号创建初始状态
-        storage.initializeUser(account.username);
+        await kvStorage.initializeUser(account.username);
         
         // 设置初始基线时间
         const baselineTime = new Date().toISOString();
-        storage.setUserBaseline(account.username, baselineTime);
+        await kvStorage.setUserBaseline(account.username, baselineTime);
         
         return {
           username: account.username,
@@ -120,7 +141,7 @@ export async function GET(request: Request) {
           baselineTime,
           nextCheck: new Date(new Date().getTime() + 15 * 60 * 1000).toISOString()
         };
-      }),
+      })),
       systemStatus: {
         lastInitialized: new Date().toISOString(),
         nextScheduledRun: new Date(new Date().getTime() + 15 * 60 * 1000).toISOString()
@@ -128,11 +149,10 @@ export async function GET(request: Request) {
     };
     
     // 更新系统状态
-    storage.systemState = {
-      ...storage.systemState,
+    await kvStorage.saveSystemState({
       lastInitialized: new Date().toISOString(),
       monitoringActive: true
-    };
+    });
     
     console.log(`[VERCEL_FUNCTION_END] 监控初始化完成，设置了 ${accounts.length} 个账号的监控`);
     return NextResponse.json({ 

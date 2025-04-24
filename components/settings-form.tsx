@@ -164,6 +164,49 @@ export function SettingsForm() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
+      // 检查系统中是否已有其他用户设置了监控账号
+      try {
+        const checkResponse = await fetch('/api/logs');
+        const checkResult = await checkResponse.json();
+        
+        // 检查现有账号
+        const existingAccounts = checkResult.status?.accounts || [];
+        
+        // 如果有存在的监控账号，且与当前要设置的不同，则提示确认
+        if (existingAccounts.length > 0) {
+          // 获取当前用户要监控的账号
+          const currentAccount = accounts.length > 0 ? accounts[0].username : null;
+          
+          // 检查是否有其他账号
+          const otherAccounts = existingAccounts.filter((acc: any) => 
+            acc.username !== currentAccount
+          );
+          
+          if (otherAccounts.length > 0) {
+            // 显示确认对话框
+            if (!window.confirm(
+              `系统中已有其他监控账号: ${otherAccounts.map((a: any) => '@' + a.username).join(', ')}。\n` +
+              `由于Twitter API限制，同一时刻只能监控一个账号。\n` +
+              `是否清除现有监控并设置您的账号？`
+            )) {
+              // 用户取消，停止设置过程
+              toast({
+                title: "操作已取消",
+                description: "您的设置未被保存。为确保监控正常运行，同一时间只能监控一个账号。",
+                variant: "destructive",
+              });
+              return;
+            }
+            
+            // 用户确认后，会继续执行下面的设置保存流程
+            console.log("用户确认清除现有监控");
+          }
+        }
+      } catch (checkError) {
+        console.error('检查现有监控失败:', checkError);
+        // 检查失败不阻止设置保存
+      }
+      
       setSavingSettings(true);
       
       // 准备要保存的数据
@@ -214,7 +257,7 @@ export function SettingsForm() {
         // 将设置作为URL参数传递，避免依赖服务器端读取localStorage
         console.log(`发起请求: /api/monitor?settings=${settingsParam.substring(0, 100)}...`);
         
-        const response = await fetch(`/api/monitor?settings=${settingsParam}`, {
+        const response = await fetch(`/api/monitor?settings=${settingsParam}&replace=true`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',

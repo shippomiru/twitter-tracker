@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-// 引入监控服务
+// 引入监控服务和KV存储
 const monitorService = require('@/lib/services/monitorService');
-const twitterService = require('@/lib/services/twitterService');
-const { log, storage } = require('@/lib/services/utils');
+const kvStorage = require('@/lib/services/kvStorage');
+const { log } = require('@/lib/services/utils');
 
 // 此API设计为由外部Cron Job调用，每15分钟执行一次
 // 例如可以使用Vercel Cron Jobs或外部服务如cron-job.org
@@ -24,21 +24,22 @@ export async function GET(request: Request) {
     }
     
     // 更新系统状态
-    storage.systemState = {
-      ...storage.systemState,
+    await kvStorage.saveSystemState({
       lastRun: new Date().toISOString(),
       isRunning: true,
-      totalChecks: (storage.systemState?.totalChecks || 0) + 1
-    };
+      totalChecks: (await kvStorage.getSystemState()).totalChecks + 1 || 1
+    });
     
     // 获取所有监控用户
-    const users = Array.from(storage.users.keys()) as string[];
+    const users = Object.keys(await kvStorage.getAllUsers());
     
     if (users.length === 0) {
       console.log(`[CRON_JOB] 没有需要监控的用户`);
       
       // 更新系统状态
-      storage.systemState.isRunning = false;
+      await kvStorage.saveSystemState({
+        isRunning: false
+      });
       
       return NextResponse.json({
         success: true,
@@ -57,18 +58,13 @@ export async function GET(request: Request) {
         // 调用监控服务检查用户
         await monitorService.checkUser(username);
         
-        // 更新用户检查时间
-        storage.updateUserLastChecked(username);
-        
         // 获取最新推文
-        const tweets = storage.getLatestTweets(username) || [];
-        const newTweets = storage.getNewTweets(username) || [];
+        const tweets = await kvStorage.getUserTweets(username) || [];
         
         return {
           username,
           status: 'checked',
           tweetsCount: tweets.length,
-          newTweetsCount: newTweets.length,
           lastChecked: new Date().toISOString()
         };
       } catch (error) {
@@ -83,8 +79,10 @@ export async function GET(request: Request) {
     }));
     
     // 更新系统状态
-    storage.systemState.isRunning = false;
-    storage.systemState.lastCompleted = new Date().toISOString();
+    await kvStorage.saveSystemState({
+      isRunning: false,
+      lastCompleted: new Date().toISOString()
+    });
     
     console.log(`[CRON_JOB_END] 推文检查任务完成`);
     
@@ -92,21 +90,20 @@ export async function GET(request: Request) {
       success: true,
       message: `已检查 ${users.length} 个用户的推文`,
       results,
-      systemStatus: {
-        lastRun: storage.systemState.lastRun,
-        lastCompleted: storage.systemState.lastCompleted,
-        totalChecks: storage.systemState.totalChecks,
-        nextScheduledRun: new Date(new Date().getTime() + 15 * 60 * 1000).toISOString()
-      }
+      systemStatus: await kvStorage.getSystemState()
     });
   } catch (error) {
     console.error(`[CRON_CRITICAL_ERROR] 定时任务执行出错:`, error);
     
     // 确保更新系统状态
-    if (storage.systemState) {
-      storage.systemState.isRunning = false;
-      storage.systemState.lastError = new Date().toISOString();
-      storage.systemState.lastErrorMessage = error instanceof Error ? error.message : String(error);
+    try {
+      await kvStorage.saveSystemState({
+        isRunning: false,
+        lastError: new Date().toISOString(),
+        lastErrorMessage: error instanceof Error ? error.message : String(error)
+      });
+    } catch (stateError) {
+      console.error(`[CRON_ERROR] 更新错误状态失败:`, stateError);
     }
     
     return NextResponse.json({
