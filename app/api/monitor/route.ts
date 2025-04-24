@@ -128,19 +128,34 @@ export async function GET(request: Request) {
       replaced: shouldReplace,
       initialized: true,
       accounts: await Promise.all(accounts.map(async account => {
-        // 为每个账号创建初始状态
-        await kvStorage.initializeUser(account.username);
-        
-        // 设置初始基线时间
-        const baselineTime = new Date().toISOString();
-        await kvStorage.setUserBaseline(account.username, baselineTime);
-        
-        return {
-          username: account.username,
-          status: 'initialized',
-          baselineTime,
-          nextCheck: new Date(new Date().getTime() + 15 * 60 * 1000).toISOString()
-        };
+        try {
+          // 先通过Twitter API获取用户ID
+          console.log(`[VERCEL_MONITOR] 查询Twitter API获取用户 ${account.username} 的ID`);
+          const twitterService = require('@/lib/services/twitterService');
+          const userInfo = await twitterService.getUserByUsername(account.username);
+          console.log(`[VERCEL_MONITOR] 获取到用户ID: ${account.username} -> ${userInfo.id}`);
+          
+          // 使用获取到的用户ID添加到存储
+          await kvStorage.addUser(account.username, userInfo.id);
+          
+          // 设置初始基线时间
+          const baselineTime = new Date().toISOString();
+          
+          return {
+            username: account.username,
+            userId: userInfo.id,
+            status: 'initialized',
+            baselineTime,
+            nextCheck: new Date(new Date().getTime() + 15 * 60 * 1000).toISOString()
+          };
+        } catch (error) {
+          console.error(`[VERCEL_MONITOR_ERROR] 获取用户 ${account.username} 的ID失败:`, error instanceof Error ? error.message : String(error));
+          return {
+            username: account.username,
+            status: 'error',
+            error: error instanceof Error ? error.message : String(error)
+          };
+        }
       })),
       systemStatus: {
         lastInitialized: new Date().toISOString(),
