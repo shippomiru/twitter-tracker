@@ -21,18 +21,18 @@ function logError(message: string, error?: any) {
 let settings = mockSettings;
 let notificationLogs: NotificationLog[] = [];
 
-// 初始化DeepSeek客户端
-let deepseekClient: any;
-try {
-  deepseekClient = new DeepSeekClient();
-  logInfo('DeepSeek客户端初始化成功');
-} catch (error) {
-  logError('DeepSeek客户端初始化失败，将使用模拟翻译', error);
-}
-
 // In a real app, this would be a scheduled function
 // For this MVP, we'll make it an API endpoint that could be called by a cron job
 export async function GET() {
+  // 初始化DeepSeek客户端
+  let deepseekClient: any;
+  try {
+    deepseekClient = new DeepSeekClient();
+    logInfo('DeepSeek客户端初始化成功');
+  } catch (error) {
+    logError('DeepSeek客户端初始化失败，将使用模拟翻译', error);
+  }
+
   try {
     // 1. Get all monitored accounts
     const accounts = settings.monitoredAccounts;
