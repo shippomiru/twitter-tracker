@@ -135,6 +135,16 @@ export function SettingsForm() {
   const handleAddAccount = async () => {
     if (!newAccount) return;
     
+    // 检查是否已经有一个账号
+    if (accounts.length >= 1) {
+      toast({
+        title: "Free Version Limit",
+        description: "Free version only supports monitoring one account. Please remove the existing account before adding a new one.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setAddingAccount(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
     
@@ -147,7 +157,7 @@ export function SettingsForm() {
     setNewAccount("");
     setAddingAccount(false);
     toast({
-      title: "Account added",
+      title: "Account Added",
       description: `@${newAccountObj.username} has been added to your monitoring list`,
     });
   };
