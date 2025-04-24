@@ -5,7 +5,13 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { MainNav } from '@/components/main-nav';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  fallback: ['system-ui', 'arial'],
+  preload: true,
+  adjustFontFallback: true
+});
 
 export const metadata: Metadata = {
   title: 'TweetWatcher - Twitter Account Monitoring',
