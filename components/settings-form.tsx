@@ -244,6 +244,15 @@ export function SettingsForm() {
               description: `Found ${result.newTweets.length} new tweets during initial check`,
             });
           }
+          
+          // 如果返回了警告信息
+          if (result.warning) {
+            toast({
+              title: 'Warning',
+              description: result.warning,
+              variant: 'destructive',
+            });
+          }
         } else {
           console.error('Error starting monitoring:', result.message);
           toast({
@@ -262,22 +271,25 @@ export function SettingsForm() {
         
         console.error(`详细错误: ${errorDetails}`);
         
-        // 尝试调用简单的诊断API
-        console.log('尝试调用诊断API验证基本连通性...');
-        
-        try {
-          const testResponse = await fetch('/api/debug/ping');
-          const testResult = await testResponse.json();
-          console.log('诊断API响应:', testResult);
-        } catch (testError) {
-          console.error('诊断API也调用失败:', testError);
+        // 特殊处理超时错误
+        const isTimeoutError = 
+          errorDetails.includes('timeout') || 
+          errorDetails.includes('504') || 
+          errorDetails.includes('timed out');
+          
+        if (isTimeoutError) {
+          toast({
+            title: 'API超时',
+            description: `设置已保存，但API处理超时。Twitter API响应可能较慢，请稍后查看结果。`,
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Warning',
+            description: `设置已保存，但监控API调用失败: ${errorDetails}`,
+            variant: 'destructive',
+          });
         }
-        
-        toast({
-          title: 'Warning',
-          description: `设置已保存，但监控API调用失败: ${errorDetails}`,
-          variant: 'destructive',
-        });
       }
     } catch (error) {
       console.error('Error saving settings:', error);

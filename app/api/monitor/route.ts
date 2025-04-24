@@ -25,6 +25,16 @@ function logError(message: string, error?: any) {
 let settings = mockSettings;
 let notificationLogs: NotificationLog[] = [];
 
+// 添加API超时保护
+const withTimeout = <T>(promise: Promise<T>, timeout = 50000): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error(`操作超时，已执行${timeout/1000}秒`)), timeout)
+    )
+  ]);
+};
+
 // API端点 - 在Vercel上作为serverless函数执行
 export async function GET(request: Request) {
   // 立即记录API调用，确保在Vercel日志中看到
@@ -125,46 +135,60 @@ export async function GET(request: Request) {
     
     console.log(`[VERCEL_MONITOR] 开始检查 ${accounts.length} 个监控账号的新推文`);
     
-    // 2. 处理每个账号
-    for (const account of accounts) {
-      console.log(`[VERCEL_ACCOUNT] 开始处理账号 @${account.username}`);
-      
-      try {
-        // 2.1 添加监控用户（如果还没有添加）
-        console.log(`[VERCEL_ADD_USER] 尝试添加监控用户: ${account.username}`);
-        const addResult = await monitorService.addUser(account.username);
-        console.log(`[VERCEL_ADD_USER] 添加用户结果: ${addResult ? '成功' : '已存在'}`);
+    // 2. 处理每个账号，但设置总体超时
+    try {
+      // 使用Promise.all和超时保护包装所有账号处理
+      await withTimeout(Promise.all(accounts.map(async (account) => {
+        console.log(`[VERCEL_ACCOUNT] 开始处理账号 @${account.username}`);
         
-        // 2.2 检查用户最新推文
-        console.log(`[VERCEL_CHECK_TWEETS] 开始检查用户 ${account.username} 的新推文`);
-        await monitorService.checkUser(account.username);
-        
-        // 2.3 更新最后检查时间
-        account.lastChecked = new Date().toISOString();
-        console.log(`[VERCEL_UPDATE] 更新最后检查时间: ${account.lastChecked}`);
-        
-        // 获取用户最新推文ID以更新lastTweetId
-        const latestTweets = monitorService.storage.getLatestTweets(account.username);
-        if (latestTweets && latestTweets.length > 0) {
-          account.lastTweetId = latestTweets[0].id;
-          console.log(`[VERCEL_UPDATE] 更新最后推文ID: ${account.lastTweetId}`);
+        try {
+          // 2.1 添加监控用户（如果还没有添加）
+          console.log(`[VERCEL_ADD_USER] 尝试添加监控用户: ${account.username}`);
+          const addResult = await monitorService.addUser(account.username);
+          console.log(`[VERCEL_ADD_USER] 添加用户结果: ${addResult ? '成功' : '已存在'}`);
           
-          // 添加到返回结果
-          newTweets.push(...latestTweets.map((tweet: any) => ({
-            ...tweet,
-            translation: '已通过monitorService处理'
-          })));
+          // 2.2 检查用户最新推文
+          console.log(`[VERCEL_CHECK_TWEETS] 开始检查用户 ${account.username} 的新推文`);
+          await monitorService.checkUser(account.username);
           
-          console.log(`[VERCEL_TWEETS] 用户 ${account.username} 发现 ${latestTweets.length} 条推文`);
-        } else {
-          console.log(`[VERCEL_TWEETS] 用户 ${account.username} 未发现新推文`);
+          // 2.3 更新最后检查时间
+          account.lastChecked = new Date().toISOString();
+          console.log(`[VERCEL_UPDATE] 更新最后检查时间: ${account.lastChecked}`);
+          
+          // 获取用户最新推文ID以更新lastTweetId
+          const latestTweets = monitorService.storage.getLatestTweets(account.username);
+          if (latestTweets && latestTweets.length > 0) {
+            account.lastTweetId = latestTweets[0].id;
+            console.log(`[VERCEL_UPDATE] 更新最后推文ID: ${account.lastTweetId}`);
+            
+            // 添加到返回结果
+            newTweets.push(...latestTweets.map((tweet: any) => ({
+              ...tweet,
+              translation: '已通过monitorService处理'
+            })));
+            
+            console.log(`[VERCEL_TWEETS] 用户 ${account.username} 发现 ${latestTweets.length} 条推文`);
+          } else {
+            console.log(`[VERCEL_TWEETS] 用户 ${account.username} 未发现新推文`);
+          }
+        } catch (error) {
+          console.error(`[VERCEL_ERROR] 处理账号 @${account.username} 出错:`, error);
+          if (error instanceof Error) {
+            console.error(`[VERCEL_ERROR_DETAILS] 类型:${error.name}, 消息:${error.message}, 堆栈:${error.stack}`);
+          }
+          // 单个账号处理错误不应该影响整体流程
+          return null;
         }
-      } catch (error) {
-        console.error(`[VERCEL_ERROR] 处理账号 @${account.username} 出错:`, error);
-        if (error instanceof Error) {
-          console.error(`[VERCEL_ERROR_DETAILS] 类型:${error.name}, 消息:${error.message}, 堆栈:${error.stack}`);
-        }
-      }
+      })), 45000); // 设置45秒超时，预留时间给响应处理
+    } catch (timeoutError) {
+      console.error(`[VERCEL_TIMEOUT] 处理账号超时:`, timeoutError);
+      // 即使超时也返回已处理的结果
+      return NextResponse.json({ 
+        success: true, 
+        message: `处理部分完成但遇到超时，发现 ${newTweets.length} 条新推文`,
+        newTweets,
+        warning: "操作超时，部分处理可能未完成"
+      });
     }
     
     console.log(`[VERCEL_FUNCTION_END] 监控API调用完成，发现 ${newTweets.length} 条新推文`);
