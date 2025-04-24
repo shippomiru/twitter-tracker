@@ -63,12 +63,24 @@ export async function GET(request: Request) {
   }
   
   // 检查是否是构建环境
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
+  console.log(`[VERCEL_PHASE_CHECK] NEXT_PHASE=${process.env.NEXT_PHASE || '未设置'}`);
+  console.log(`[VERCEL_PHASE_CHECK] VERCEL_ENV=${process.env.VERCEL_ENV || '未设置'}`);
+  console.log(`[VERCEL_PHASE_CHECK] NODE_ENV=${process.env.NODE_ENV || '未设置'}`);
+  
+  // 强制跳过构建环境检查，确保API能正常执行
+  const skipBuildCheck = true;
+  
+  if (!skipBuildCheck && process.env.NEXT_PHASE === 'phase-production-build') {
     console.log('[VERCEL_BUILD] 检测到构建环境，跳过监控执行');
     return NextResponse.json({ 
       success: true, 
       message: 'Build phase - skipping monitoring',
-      newTweets: [] 
+      newTweets: [],
+      env: {
+        NEXT_PHASE: process.env.NEXT_PHASE,
+        NODE_ENV: process.env.NODE_ENV,
+        VERCEL_ENV: process.env.VERCEL_ENV
+      }
     });
   }
 

@@ -18,5 +18,17 @@
       "API_RATE_LIMIT_MAX_REQUESTS": "1",
       "API_RATE_LIMIT_RETRY_AFTER": "900000"
     }
+  },
+  "functions": {
+    "app/api/**/*.ts": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1", "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"] }
+  ],
+  "logs": {
+    "longPolling": true
   }
 } 
