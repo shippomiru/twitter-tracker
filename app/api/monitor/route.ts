@@ -30,6 +30,38 @@ export async function GET(request: Request) {
   // 立即记录API调用，确保在Vercel日志中看到
   console.log(`[VERCEL_FUNCTION_START] Twitter Monitor API called at ${new Date().toISOString()}`);
   
+  // 测试环境变量和其他问题
+  try {
+    // 使用所有可能的日志级别，确保Vercel能捕获到日志
+    console.info('[VERCEL_TEST_INFO] 这是info级别日志 - Monitor API');
+    console.warn('[VERCEL_TEST_WARN] 这是warn级别日志 - Monitor API');
+    console.error('[VERCEL_TEST_ERROR] 这是error级别日志 - Monitor API');
+    
+    // 检查请求URL，确认查询参数获取正常
+    try {
+      const url = new URL(request.url);
+      console.log(`[VERCEL_REQUEST] 完整URL: ${url.toString()}`);
+      console.log(`[VERCEL_REQUEST] 路径: ${url.pathname}`);
+      console.log(`[VERCEL_REQUEST] 查询参数数量: ${url.searchParams.toString().length > 0 ? '有' : '无'}`);
+      
+      const hasSettings = url.searchParams.has('settings');
+      console.log(`[VERCEL_REQUEST] 是否有settings参数: ${hasSettings ? '是' : '否'}`);
+      
+      if (hasSettings) {
+        const settingsLength = url.searchParams.get('settings')?.length || 0;
+        console.log(`[VERCEL_REQUEST] settings参数长度: ${settingsLength}`);
+        
+        if (settingsLength > 5000) {
+          console.warn(`[VERCEL_REQUEST_WARN] settings参数可能过大 (${settingsLength} 字符)`);
+        }
+      }
+    } catch (urlError) {
+      console.error(`[VERCEL_REQUEST_ERROR] 解析请求URL出错:`, urlError);
+    }
+  } catch (testError) {
+    console.error(`[VERCEL_TEST_CRITICAL] 测试日志出错:`, testError);
+  }
+  
   // 检查是否是构建环境
   if (process.env.NEXT_PHASE === 'phase-production-build') {
     console.log('[VERCEL_BUILD] 检测到构建环境，跳过监控执行');

@@ -179,14 +179,58 @@ export function SettingsForm() {
       localStorage.removeItem('notificationLogs');
       
       // 将设置序列化并编码为URL参数
-      const settingsParam = encodeURIComponent(JSON.stringify(settingsToSave));
+      let settingsParam = encodeURIComponent(JSON.stringify(settingsToSave));
       
       // 自动触发监控API，开始检查新推文
       try {
         console.log('开始调用监控API');
+        
+        // 记录请求参数大小
+        console.log(`设置参数大小: ${settingsParam.length} 字符`);
+        
+        // 检查URL参数大小，如果过大则进行分割
+        if (settingsParam.length > 2000) {
+          console.log('警告: 设置参数过大，可能导致请求失败');
+          toast({
+            title: 'Warning',
+            description: 'Settings too large for URL parameter. Using simplified settings.',
+            variant: 'destructive',
+          });
+          
+          // 使用简化版设置
+          const simplifiedSettings = {
+            ...values,
+            monitoredAccounts: accounts.map(acc => ({ 
+              username: acc.username,
+              name: acc.name 
+            }))
+          };
+          
+          // 重新序列化
+          settingsParam = encodeURIComponent(JSON.stringify(simplifiedSettings));
+          console.log(`简化后参数大小: ${settingsParam.length} 字符`);
+        }
+        
         // 将设置作为URL参数传递，避免依赖服务器端读取localStorage
-        const response = await fetch(`/api/monitor?settings=${settingsParam}`);
+        console.log(`发起请求: /api/monitor?settings=${settingsParam.substring(0, 100)}...`);
+        
+        const response = await fetch(`/api/monitor?settings=${settingsParam}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+        })
+        .then(res => {
+          console.log(`收到响应状态: ${res.status} ${res.statusText}`);
+          if (!res.ok) {
+            throw new Error(`HTTP错误: ${res.status}`);
+          }
+          return res;
+        });
+        
+        console.log('正在解析响应JSON...');
         const result = await response.json();
+        console.log('API响应数据:', result);
         
         if (result.success) {
           toast({
@@ -209,10 +253,29 @@ export function SettingsForm() {
           });
         }
       } catch (apiError) {
-        console.error('Error calling monitoring API:', apiError);
+        console.error('调用监控API时发生错误:', apiError);
+        
+        // 增加更多诊断信息
+        const errorDetails = apiError instanceof Error 
+          ? `${apiError.name}: ${apiError.message}` 
+          : String(apiError);
+        
+        console.error(`详细错误: ${errorDetails}`);
+        
+        // 尝试调用简单的诊断API
+        console.log('尝试调用诊断API验证基本连通性...');
+        
+        try {
+          const testResponse = await fetch('/api/debug/ping');
+          const testResult = await testResponse.json();
+          console.log('诊断API响应:', testResult);
+        } catch (testError) {
+          console.error('诊断API也调用失败:', testError);
+        }
+        
         toast({
           title: 'Warning',
-          description: 'Settings saved but monitoring API call failed. Please try again later.',
+          description: `设置已保存，但监控API调用失败: ${errorDetails}`,
           variant: 'destructive',
         });
       }
