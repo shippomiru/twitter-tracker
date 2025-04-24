@@ -24,6 +24,15 @@ let notificationLogs: NotificationLog[] = [];
 // In a real app, this would be a scheduled function
 // For this MVP, we'll make it an API endpoint that could be called by a cron job
 export async function GET() {
+  // 检查是否是构建环境
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Build phase - skipping monitoring',
+      newTweets: [] 
+    });
+  }
+
   // 初始化DeepSeek客户端
   let deepseekClient: any;
   try {
@@ -37,6 +46,15 @@ export async function GET() {
     // 1. Get all monitored accounts
     const accounts = settings.monitoredAccounts;
     const newTweets: Tweet[] = [];
+    
+    // 如果没有监控账号，直接返回
+    if (accounts.length === 0) {
+      return NextResponse.json({ 
+        success: true, 
+        message: 'No accounts to monitor',
+        newTweets: [] 
+      });
+    }
     
     logInfo(`开始检查 ${accounts.length} 个监控账号的新推文`);
     
