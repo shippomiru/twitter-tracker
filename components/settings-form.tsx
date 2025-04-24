@@ -236,7 +236,14 @@ export function SettingsForm() {
                       disabled={addingAccount}
                     />
                   </div>
-                  <Button onClick={handleAddAccount} disabled={!newAccount || addingAccount}>
+                  <Button 
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleAddAccount();
+                    }} 
+                    disabled={!newAccount || addingAccount}
+                  >
                     {addingAccount ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                     Add
                   </Button>
