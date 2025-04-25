@@ -1,26 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://flashtweet.example.com/</loc>
-    <lastmod>2023-12-25</lastmod>
+    <loc>https://flashtweet.online/</loc>
+    <lastmod>2025-04-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://flashtweet.example.com/logs</loc>
-    <lastmod>2023-12-25</lastmod>
+    <loc>https://flashtweet.online/logs</loc>
+    <lastmod>2025-04-25</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://flashtweet.example.com/settings</loc>
-    <lastmod>2023-12-25</lastmod>
+    <loc>https://flashtweet.online/settings</loc>
+    <lastmod>2025-04-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://flashtweet.example.com/pricing</loc>
-    <lastmod>2023-12-25</lastmod>
+    <loc>https://flashtweet.online/pricing</loc>
+    <lastmod>2025-04-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

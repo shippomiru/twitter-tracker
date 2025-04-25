@@ -14,8 +14,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'FlashTweet - Twitter Account Monitoring',
-  description: 'Real-time Twitter account monitoring with instant notifications',
+  title: 'Flashtweet - Real-Time Twitter Monitoring with AI Translation & Alerts',
+  description: 'Flashtweet uses AI to monitor Twitter accounts in real-time, providing instant alerts via email or phone. Get auto-translated tweets and never miss important updates.',
+  metadataBase: new URL('https://flashtweet.online'),
+  alternates: {
+    canonical: '/',
+  },
 };
 
 export default function RootLayout({
