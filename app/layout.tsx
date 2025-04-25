@@ -35,8 +35,8 @@ export default function RootLayout({
             <MainNav />
             <main className="flex-1">{children}</main>
             <footer className="border-t py-6 md:py-0">
-              <div className="container flex h-16 items-center">
-                <p className="w-full text-center text-sm text-muted-foreground">
+              <div className="flex h-16 items-center justify-center w-full text-center">
+                <p className="text-sm text-muted-foreground">
                   &copy; 2025 FlashTweet. All rights reserved.
                 </p>
               </div>
