@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     let settings: UserSettings = {
       emailAddress: '',
       phoneNumber: '',
-      checkFrequency: 15,
+      checkFrequency: 30,
       notificationChannels: {
         email: false,
         phone: false

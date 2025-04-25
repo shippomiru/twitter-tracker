@@ -79,7 +79,7 @@ export function SettingsForm() {
     defaultValues: {
       emailAddress: "",
       phoneNumber: "",
-      checkFrequency: "15",
+      checkFrequency: "30",
       notificationChannels: {
         email: false,
         phone: false,
@@ -105,7 +105,7 @@ export function SettingsForm() {
       form.reset({
         emailAddress: "",
         phoneNumber: "",
-        checkFrequency: "15",
+        checkFrequency: "30",
         notificationChannels: {
           email: false,
           phone: false,
@@ -406,7 +406,6 @@ export function SettingsForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="15">Every 15 minutes</SelectItem>
                           <SelectItem value="30">Every 30 minutes</SelectItem>
                           <SelectItem value="60">Every hour</SelectItem>
                         </SelectContent>

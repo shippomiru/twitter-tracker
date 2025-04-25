@@ -53,7 +53,7 @@ export const mockSettings: UserSettings = {
   monitoredAccounts: [],
   emailAddress: "",
   phoneNumber: "",
-  checkFrequency: 15,
+  checkFrequency: 30,
   notificationChannels: {
     email: false,
     phone: false
