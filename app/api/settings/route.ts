@@ -58,7 +58,37 @@ export async function POST(req: Request) {
       };
     }
     
-    // 保存系统设置
+    // 自定义的清除函数，只清除用户和推文数据，不影响系统设置
+    const clearUsersAndTweetsOnly = async () => {
+      try {
+        // 记录当前系统设置
+        const currentSettings = await kvStorage.getSystemSettings();
+        
+        // 清除所有用户和推文
+        await kvStorage.clearAllUsers();
+        
+        // 恢复系统设置
+        await kvStorage.saveSystemSettings(currentSettings);
+        
+        log('已清除用户和推文数据，并恢复了系统设置');
+        return true;
+      } catch (error: any) {
+        log(`清除数据时出错: ${error?.message || String(error)}`, 'error');
+        return false;
+      }
+    };
+    
+    // 1. 首先清除现有监控账号和相关数据
+    // 但此时不要直接调用clearAllUsers，因为它会清除系统设置
+    const existingUsers = await kvStorage.getAllUsers();
+    log(`清除之前用户数量: ${Object.keys(existingUsers).length}`);
+    
+    if (Object.keys(existingUsers).length > 0) {
+      // 执行清除
+      await clearUsersAndTweetsOnly();
+    }
+    
+    // 2. 然后保存新的系统设置
     await kvStorage.saveSystemSettings({
       emailAddress: settings.emailAddress,
       phoneNumber: settings.phoneNumber,
@@ -66,12 +96,8 @@ export async function POST(req: Request) {
       notificationChannels: settings.notificationChannels
     });
     
-    // 处理监控账号 - 假设monitoredAccounts是账号对象数组
+    // 3. 最后添加新的监控账号
     if (settings.monitoredAccounts && settings.monitoredAccounts.length > 0) {
-      // 先清除现有账号
-      await kvStorage.clearAllUsers();
-      
-      // 添加新账号
       for (const account of settings.monitoredAccounts) {
         const monitorService = require('@/lib/services/monitorService');
         await monitorService.addUser(account.username);
@@ -87,10 +113,10 @@ export async function POST(req: Request) {
     })}`, 'info');
     
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating settings:', error);
     return NextResponse.json(
-      { success: false, message: 'Failed to update settings' },
+      { success: false, message: `Failed to update settings: ${error?.message || String(error)}` },
       { status: 500 }
     );
   }
