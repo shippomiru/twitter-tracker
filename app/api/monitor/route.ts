@@ -86,6 +86,10 @@ export async function GET(request: Request) {
     console.log(`[VERCEL_CONFIG] 邮件通知=${settings.notificationChannels?.email || false}, 电话通知=${settings.notificationChannels?.phone || false}`);
     console.log(`[VERCEL_CONFIG] 是否替换现有监控=${shouldReplace}`);
     
+    // 检查并记录关键设置
+    console.log(`[VERCEL_SETTINGS] 配置的邮箱: ${settings.emailAddress || '未设置'}`);
+    console.log(`[VERCEL_SETTINGS] 配置的手机号: ${settings.phoneNumber || '未设置'}`);
+    
     // 获取监控账号
     const accounts = settings.monitoredAccounts || [];
     
