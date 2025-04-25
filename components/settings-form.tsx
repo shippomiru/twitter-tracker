@@ -221,91 +221,48 @@ export function SettingsForm() {
       // 清空日志
       localStorage.removeItem('notificationLogs');
       
-      // 将设置序列化并编码为URL参数
-      let settingsParam = encodeURIComponent(JSON.stringify(settingsToSave));
-      
-      // 自动触发监控API，开始检查新推文
       try {
-        console.log('开始调用监控API');
+        console.log('开始保存设置到API');
         
-        // 记录请求参数大小
-        console.log(`设置参数大小: ${settingsParam.length} 字符`);
-        
-        // 检查URL参数大小，如果过大则进行分割
-        if (settingsParam.length > 2000) {
-          console.log('警告: 设置参数过大，可能导致请求失败');
-          toast({
-            title: 'Warning',
-            description: 'Settings too large for URL parameter. Using simplified settings.',
-            variant: 'destructive',
-          });
-          
-          // 使用简化版设置
-          const simplifiedSettings = {
-            ...values,
-            monitoredAccounts: accounts.map(acc => ({ 
-              username: acc.username,
-              name: acc.name 
-            }))
-          };
-          
-          // 重新序列化
-          settingsParam = encodeURIComponent(JSON.stringify(simplifiedSettings));
-          console.log(`简化后参数大小: ${settingsParam.length} 字符`);
-        }
-        
-        // 将设置作为URL参数传递，避免依赖服务器端读取localStorage
-        console.log(`发起请求: /api/monitor?settings=${settingsParam.substring(0, 100)}...`);
-        
-        const response = await fetch(`/api/monitor?settings=${settingsParam}&replace=true`, {
-          method: 'GET',
+        // 调用settings API保存设置
+        const response = await fetch('/api/settings', {
+          method: 'POST',
           headers: {
-            'Accept': 'application/json',
+            'Content-Type': 'application/json',
           },
-        })
-        .then(res => {
-          console.log(`收到响应状态: ${res.status} ${res.statusText}`);
-          if (!res.ok) {
-            throw new Error(`HTTP错误: ${res.status}`);
-          }
-          return res;
+          body: JSON.stringify(settingsToSave)
         });
         
-        console.log('正在解析响应JSON...');
+        if (!response.ok) {
+          throw new Error(`HTTP错误: ${response.status}`);
+        }
+        
         const result = await response.json();
-        console.log('API响应数据:', result);
         
         if (result.success) {
           toast({
-            title: 'Success',
-            description: 'Settings saved and monitoring started',
+            title: '设置已保存',
+            description: '监控设置已更新，系统将按照设定频率检查新推文',
           });
           
-          if (result.newTweets && result.newTweets.length > 0) {
-            toast({
-              title: 'New Tweets Found',
-              description: `Found ${result.newTweets.length} new tweets during initial check`,
-            });
-          }
-          
-          // 如果返回了警告信息
+          // 如果有警告信息
           if (result.warning) {
             toast({
-              title: 'Warning',
+              title: '警告',
               description: result.warning,
               variant: 'destructive',
             });
           }
         } else {
-          console.error('Error starting monitoring:', result.message);
+          console.error('保存设置失败:', result.message);
           toast({
-            title: 'Warning',
-            description: `Settings saved but monitoring failed: ${result.message || 'Unknown error'}`,
+            title: '警告',
+            description: `设置保存失败: ${result.message || '未知错误'}`,
             variant: 'destructive',
           });
         }
       } catch (apiError) {
-        console.error('调用监控API时发生错误:', apiError);
+        console.error('调用设置API时发生错误:', apiError);
         
         // 增加更多诊断信息
         const errorDetails = apiError instanceof Error 
@@ -314,25 +271,11 @@ export function SettingsForm() {
         
         console.error(`详细错误: ${errorDetails}`);
         
-        // 特殊处理超时错误
-        const isTimeoutError = 
-          errorDetails.includes('timeout') || 
-          errorDetails.includes('504') || 
-          errorDetails.includes('timed out');
-          
-        if (isTimeoutError) {
-          toast({
-            title: 'API超时',
-            description: `设置已保存，但API处理超时。Twitter API响应可能较慢，请稍后查看结果。`,
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Warning',
-            description: `设置已保存，但监控API调用失败: ${errorDetails}`,
-            variant: 'destructive',
-          });
-        }
+        toast({
+          title: 'API错误',
+          description: `设置保存失败: ${errorDetails}`,
+          variant: 'destructive',
+        });
       }
     } catch (error) {
       console.error('Error saving settings:', error);

@@ -1,24 +1,28 @@
 import { NextResponse } from 'next/server';
 import { UserSettings } from '@/lib/types';
+// 导入kvStorage服务实例而不是类
+const kvStorage = require('@/lib/services/kvStorage');
+// 使用现有的日志工具
+const { log } = require('@/lib/services/utils');
 
 // 使用内存存储作为临时解决方案
 let settings: UserSettings | null = null;
 
 export async function GET() {
   try {
-    // 如果没有设置，返回默认值
-    if (!settings) {
-      settings = {
-        emailAddress: '',
-        phoneNumber: '',
-        checkFrequency: 15,
-        notificationChannels: {
-          email: false,
-          phone: false,
-        },
-        monitoredAccounts: [],
-      };
-    }
+    // 从kvStorage获取设置
+    const systemSettings = await kvStorage.getSystemSettings();
+    const users = await kvStorage.getAllUsers();
+    
+    // 构建完整的设置对象
+    settings = {
+      ...systemSettings,
+      monitoredAccounts: Object.values(users).map((user: any) => ({
+        username: user.username,
+        userId: user.userId,
+        lastChecked: user.lastChecked
+      }))
+    };
     
     return NextResponse.json({ success: true, settings });
   } catch (error) {
@@ -30,40 +34,59 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const newSettings: UserSettings = await request.json();
+    const data = await req.json();
     
-    // 验证设置
-    if (!newSettings) {
-      return NextResponse.json(
-        { success: false, message: 'No settings provided' },
-        { status: 400 }
-      );
-    }
-    
-    // 更新设置
-    settings = {
-      ...settings,
-      ...newSettings,
-      checkFrequency: typeof newSettings.checkFrequency === 'string' 
-        ? parseInt(newSettings.checkFrequency, 10) 
-        : newSettings.checkFrequency,
-      monitoredAccounts: newSettings.monitoredAccounts || [],
-      notificationChannels: newSettings.notificationChannels || {
+    // 初始化设置
+    let settings: UserSettings = {
+      emailAddress: '',
+      phoneNumber: '',
+      checkFrequency: 15,
+      notificationChannels: {
         email: false,
-        phone: false,
+        phone: false
       },
+      monitoredAccounts: []
     };
     
-    // 记录日志
-    console.log('Settings updated:', settings);
+    // 验证和合并数据
+    if (data) {
+      settings = {
+        ...settings,
+        ...data
+      };
+    }
     
-    return NextResponse.json({ 
-      success: true, 
-      settings,
-      message: 'Settings saved successfully' 
+    // 保存系统设置
+    await kvStorage.saveSystemSettings({
+      emailAddress: settings.emailAddress,
+      phoneNumber: settings.phoneNumber,
+      checkFrequency: settings.checkFrequency,
+      notificationChannels: settings.notificationChannels
     });
+    
+    // 处理监控账号 - 假设monitoredAccounts是账号对象数组
+    if (settings.monitoredAccounts && settings.monitoredAccounts.length > 0) {
+      // 先清除现有账号
+      await kvStorage.clearAllUsers();
+      
+      // 添加新账号
+      for (const account of settings.monitoredAccounts) {
+        const monitorService = require('@/lib/services/monitorService');
+        await monitorService.addUser(account.username);
+      }
+    }
+    
+    log(`设置已保存: ${JSON.stringify({
+      emailAddress: settings.emailAddress ? '已设置' : '未设置',
+      phoneNumber: settings.phoneNumber ? '已设置' : '未设置',
+      checkFrequency: settings.checkFrequency,
+      notificationChannels: settings.notificationChannels,
+      monitoredAccounts: settings.monitoredAccounts.length
+    })}`, 'info');
+    
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating settings:', error);
     return NextResponse.json(
