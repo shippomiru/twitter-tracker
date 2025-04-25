@@ -38,7 +38,8 @@ export async function GET(request: Request) {
       
       // 更新系统状态
       await kvStorage.saveSystemState({
-        isRunning: false
+        isRunning: false,
+        lastCompleted: new Date().toISOString()
       });
       
       return NextResponse.json({
@@ -49,6 +50,9 @@ export async function GET(request: Request) {
     }
     
     console.log(`[CRON_JOB] 开始检查 ${users.length} 个用户的新推文`);
+    
+    // 记录当前时间，用于更新所有用户的基准时间
+    const checkTime = new Date().toISOString();
     
     // 处理所有用户的结果
     const results = await Promise.all(users.map(async (username) => {
