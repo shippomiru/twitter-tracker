@@ -35,7 +35,7 @@ function generateEmailHtml(tweet) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TweetWatcher通知</title>
+  <title>FlashTweet通知</title>
   <style>
     body { 
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -133,7 +133,7 @@ function generateEmailHtml(tweet) {
 <body>
   <div class="container">
     <div class="header">
-      <h1>TweetWatcher 推文通知</h1>
+      <h1>FlashTweet 推文通知</h1>
     </div>
     <div class="content">
       <p>@${tweet.author.username} 发布了新推文:</p>
@@ -167,10 +167,10 @@ function generateEmailHtml(tweet) {
         </div>
       </div>
       
-      <p>感谢使用TweetWatcher服务，如需取消订阅，请在设置中修改。</p>
+      <p>感谢使用FlashTweet服务，如需取消订阅，请在设置中修改。</p>
     </div>
     <div class="footer">
-      &copy; 2025 TweetWatcher. 保留所有权利。
+      &copy; 2025 FlashTweet. 保留所有权利。
     </div>
   </div>
 </body>
@@ -188,7 +188,7 @@ async function sendTweetNotification(tweet, recipientEmail) {
     const data = {
       from: 'onboarding@resend.dev',
       to: recipientEmail,
-      subject: `TweetWatcher: ${tweet.author.name} (@${tweet.author.username}) 发布了新推文`,
+      subject: `FlashTweet: ${tweet.author.name} (@${tweet.author.username}) 发布了新推文`,
       html: emailContent,
     };
     

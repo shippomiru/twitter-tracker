@@ -14,7 +14,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'TweetWatcher - Twitter Account Monitoring',
+  title: 'FlashTweet - Twitter Account Monitoring',
   description: 'Real-time Twitter account monitoring with instant notifications',
 };
 
@@ -33,7 +33,7 @@ export default function RootLayout({
             <footer className="border-t py-6 md:py-0">
               <div className="container flex h-16 items-center">
                 <p className="w-full text-center text-sm text-muted-foreground">
-                  &copy; 2025 TweetWatcher. All rights reserved.
+                  &copy; 2025 FlashTweet. All rights reserved.
                 </p>
               </div>
             </footer>

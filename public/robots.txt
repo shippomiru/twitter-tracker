@@ -3,4 +3,4 @@ User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://tweetwatcher.example.com/sitemap.xml 
+Sitemap: https://flashtweet.example.com/sitemap.xml 

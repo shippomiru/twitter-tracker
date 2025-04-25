@@ -25,9 +25,9 @@ async function sendTestEmail() {
     const data = {
       from: 'onboarding@resend.dev', // 发件人邮箱，需要是已验证的域名
       to: recipient,
-      subject: 'TweetWatcher测试邮件 (SDK版本)',
+      subject: 'FlashTweet测试邮件 (SDK版本)',
       html: `
-        <h1>TweetWatcher通知测试</h1>
+        <h1>FlashTweet通知测试</h1>
         <p>这是一封来自Resend SDK的测试邮件。</p>
         <p>如果您看到这封邮件，说明SDK调用成功！</p>
         <p>发送时间: ${new Date().toLocaleString()}</p>

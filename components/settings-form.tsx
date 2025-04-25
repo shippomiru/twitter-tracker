@@ -185,25 +185,25 @@ export function SettingsForm() {
           if (otherAccounts.length > 0) {
             // 显示确认对话框
             if (!window.confirm(
-              `系统中已有其他监控账号: ${otherAccounts.map((a: any) => '@' + a.username).join(', ')}。\n` +
-              `由于Twitter API限制，同一时刻只能监控一个账号。\n` +
-              `是否清除现有监控并设置您的账号？`
+              `System already has other monitoring accounts: ${otherAccounts.map((a: any) => '@' + a.username).join(', ')}.\n` +
+              `Due to Twitter API restrictions, only one account can be monitored at the same time.\n` +
+              `Do you want to clear existing monitoring and set your account?`
             )) {
               // 用户取消，停止设置过程
               toast({
-                title: "操作已取消",
-                description: "您的设置未被保存。为确保监控正常运行，同一时间只能监控一个账号。",
+                title: "Operation Cancelled",
+                description: "Your settings were not saved. To ensure normal operation, only one account can be monitored at the same time.",
                 variant: "destructive",
               });
               return;
             }
             
             // 用户确认后，会继续执行下面的设置保存流程
-            console.log("用户确认清除现有监控");
+            console.log("User confirmed clearing existing monitoring");
           }
         }
       } catch (checkError) {
-        console.error('检查现有监控失败:', checkError);
+        console.error('Checking existing monitoring failed:', checkError);
         // 检查失败不阻止设置保存
       }
       
@@ -222,7 +222,7 @@ export function SettingsForm() {
       localStorage.removeItem('notificationLogs');
       
       try {
-        console.log('开始保存设置到API');
+        console.log('Starting to save settings to API');
         
         // 调用settings API保存设置
         const response = await fetch('/api/settings', {
@@ -234,46 +234,46 @@ export function SettingsForm() {
         });
         
         if (!response.ok) {
-          throw new Error(`HTTP错误: ${response.status}`);
+          throw new Error(`HTTP error: ${response.status}`);
         }
         
         const result = await response.json();
         
         if (result.success) {
           toast({
-            title: '设置已保存',
-            description: '监控设置已更新，系统将按照设定频率检查新推文',
+            title: 'Settings Saved',
+            description: 'Monitoring settings updated, system will check for new tweets at the set frequency',
           });
           
           // 如果有警告信息
           if (result.warning) {
             toast({
-              title: '警告',
+              title: 'Warning',
               description: result.warning,
               variant: 'destructive',
             });
           }
         } else {
-          console.error('保存设置失败:', result.message);
+          console.error('Failed to save settings:', result.message);
           toast({
-            title: '警告',
-            description: `设置保存失败: ${result.message || '未知错误'}`,
+            title: 'Warning',
+            description: `Failed to save settings: ${result.message || 'Unknown error'}`,
             variant: 'destructive',
           });
         }
       } catch (apiError) {
-        console.error('调用设置API时发生错误:', apiError);
+        console.error('Error calling settings API:', apiError);
         
         // 增加更多诊断信息
         const errorDetails = apiError instanceof Error 
           ? `${apiError.name}: ${apiError.message}` 
           : String(apiError);
         
-        console.error(`详细错误: ${errorDetails}`);
+        console.error(`Detailed error: ${errorDetails}`);
         
         toast({
-          title: 'API错误',
-          description: `设置保存失败: ${errorDetails}`,
+          title: 'API Error',
+          description: `Failed to save settings: ${errorDetails}`,
           variant: 'destructive',
         });
       }
@@ -412,7 +412,7 @@ export function SettingsForm() {
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        How frequently TweetWatcher will check for new tweets
+                        How frequently FlashTweet will check for new tweets
                       </FormDescription>
                     </FormItem>
                   )}
@@ -456,7 +456,7 @@ export function SettingsForm() {
                           <FormItem>
                             <FormLabel className="text-foreground">Email Address</FormLabel>
                             <FormControl>
-                              <Input placeholder="your@email.com" {...field} />
+                              <Input placeholder="" {...field} />
                             </FormControl>
                             <FormMessage className="text-destructive" />
                           </FormItem>
@@ -493,7 +493,7 @@ export function SettingsForm() {
                           <FormItem>
                             <FormLabel className="text-foreground">Phone Number Linked to Feishu</FormLabel>
                             <FormControl>
-                              <Input placeholder="+1234567890" {...field} />
+                              <Input placeholder="" {...field} />
                             </FormControl>
                             <FormMessage className="text-destructive" />
                           </FormItem>

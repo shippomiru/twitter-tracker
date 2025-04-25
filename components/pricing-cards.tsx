@@ -78,7 +78,7 @@ export function PricingCards() {
         "Custom webhook integrations",
       ],
       cta: "Contact Sales",
-      href: "mailto:sales@tweetwatcher.example",
+      href: "mailto:sales@flashtweet.example",
     },
   ];
 
@@ -198,7 +198,7 @@ const faqs = [
   },
   {
     question: "Can I monitor private Twitter accounts?",
-    answer: "No, TweetWatcher can only monitor public Twitter accounts due to Twitter API limitations."
+    answer: "No, FlashTweet can only monitor public Twitter accounts due to Twitter API limitations."
   },
   {
     question: "How accurate is the tweet translation?",

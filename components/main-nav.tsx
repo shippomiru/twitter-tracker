@@ -47,7 +47,7 @@ export function MainNav() {
           <Link href="/" className="hidden items-center space-x-2 md:flex">
             <Bell className="h-6 w-6" />
             <span className="hidden font-bold sm:inline-block">
-              TweetWatcher
+              FlashTweet
             </span>
           </Link>
           
@@ -80,7 +80,7 @@ export function MainNav() {
             <SheetContent side="left">
               <Link href="/" className="flex items-center space-x-2" onClick={() => setOpen(false)}>
                 <Bell className="h-6 w-6" />
-                <span className="font-bold">TweetWatcher</span>
+                <span className="font-bold">FlashTweet</span>
               </Link>
               <nav className="mt-8 flex flex-col gap-4">
                 {routes.map((route) => (

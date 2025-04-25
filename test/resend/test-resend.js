@@ -11,9 +11,9 @@ const RESEND_API_PATH = '/emails';
 const emailData = {
   from: 'onboarding@resend.dev', // 发件人邮箱，需要是已验证的域名
   to: '297029445@qq.com',        // 已替换为实际的收件邮箱
-  subject: 'TweetWatcher测试邮件',
+  subject: 'FlashTweet测试邮件',
   html: `
-    <h1>TweetWatcher通知测试</h1>
+    <h1>FlashTweet通知测试</h1>
     <p>这是一封来自Resend API的测试邮件。</p>
     <p>如果您看到这封邮件，说明API调用成功！</p>
     <p>发送时间: ${new Date().toLocaleString()}</p>

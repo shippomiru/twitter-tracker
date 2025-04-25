@@ -12,7 +12,7 @@ export function HeroSection() {
               Never Miss Important Tweets
             </h1>
             <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
-              TweetWatcher monitors Twitter accounts in real-time and notifies you instantly through multiple channels when new tweets are posted.
+              FlashTweet monitors Twitter accounts in real-time and notifies you instantly through multiple channels when new tweets are posted.
             </p>
           </div>
           <div className="space-x-4">
