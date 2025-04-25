@@ -189,7 +189,7 @@ export function LogsTable() {
             <TableCaption>
               {filteredLogs.length > 0 
                 ? `A list of your recent notifications. Total: ${filteredLogs.length}` 
-                : "No notification logs found."}
+                : ""}
             </TableCaption>
             <TableHeader>
               <TableRow>
