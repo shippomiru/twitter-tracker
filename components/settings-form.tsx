@@ -398,7 +398,8 @@ export function SettingsForm() {
                       <FormLabel>Check Frequency</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
+                        defaultValue="30"
                       >
                         <FormControl>
                           <SelectTrigger>
