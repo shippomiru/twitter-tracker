@@ -131,7 +131,7 @@ export function PricingCards() {
                 <p className="text-4xl font-bold">
                   {plan.price[billingInterval]}
                   <span className="text-sm font-normal text-muted-foreground">
-                    /{billingInterval === "monthly" ? "mo" : "yr"}
+                    /mo
                   </span>
                 </p>
               </div>
